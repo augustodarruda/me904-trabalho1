@@ -1,0 +1,179 @@
+---
+title: "Untitled"
+author: "Mateus Dias Lima"
+date: "30/09/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Introdução
+
+# 2. Metodologia
+
+O modelo de regressão logística multinomial pertence à classe dos modelos lineares generalizados. Nesse modelo, a variável resposta $Y$ é categórica com mais de duas categorias. Suponha que a variável resposta tenha $K$ categorias e temos um vetor $x$ de covariáveis. Construímos o modelo de regressão multinomial através dos $K-1$ logitos
+
+$$
+\log \frac{\operatorname{Pr}(Y=\ell \mid x)}{\operatorname{Pr}(Y=K \mid x)}=\beta_{0 \ell}+x^{\top} \beta_{\ell}, \ell=1, \ldots, K-1,
+$$
+onde $\beta_\ell$ é vetor de coeficientes de dimensão $p$. De maneira equivalente, modelamos
+
+$$
+\operatorname{Pr}(Y=\ell \mid x)=\frac{e^{\beta_{0 \ell}+x^{\top} \beta_{\ell}}}{\sum_{k=1}^{K} e^{\beta_{0 k}+x^{\top} \beta_{k}}}.
+$$
+
+Essa parametrização não é estimável sem restrições, porque para qualquer valor dos parâmetros $\left\{\beta_{0 \ell}, \beta_{\ell}\right\}_{1}^{K},\left\{\beta_{0 \ell}-c_{0}, \beta_{\ell}-c\right\}_{1}^{K}$ fornecem as mesmas probabilidades (referencia). A Regularização lida com essa ambiguidade de maneira natural.
+
+Agora precisamos construir a função onde estimamos os parâmetros do modelo. Primeiro construímos a função de verossimilhança para distribuição multinomial. O desenvolvimento dessa função é baseado em (referência). Então, considere que temos $N$ subpopulações em nossos dados, onde cada subpopulação é representada por um vetor de covariáveis $x_i$, $i = 1,\ldots,N$, tamanho $n_i$ e $y_\ell$ observações na categoria $\ell = 1,\ldots,K$. Considere ainda que $\pi_{i\ell} = \operatorname{Pr}(Y=\ell \mid x_i)$. Logo, a função densidade de probabilidade conjunta é:
+
+$$
+f(\boldsymbol{y} \mid \boldsymbol{\beta})=\prod_{i=1}^{N}\left[\frac{n_{i} !}{\prod_{j=1}^{J} y_{i j} !} \cdot \prod_{j=1}^{J} \pi_{i j}^{y_{i j}}\right],
+$$
+onde $\boldsymbol{\beta}$ é o vetor de parâmetros do modelo de regressão. Como queremos maximizar a equação acima com respeito à $\boldsymbol{\beta}$, os termos fatoriais que não têm os termos $\pi_{ij}$ podem ser tratados como constantes. Então, podemos escrever a função de verossimilhança para o modelo de regressão logística multinomial como:
+
+$$
+L(\boldsymbol{\beta} \mid \boldsymbol{y}) \simeq \prod_{i=1}^{N} \prod_{j=1}^{J} \pi_{i j}^{y_{i j}}.
+$$
+Note que $\sum_{j=1}^{J} y_{i j} = n_{i} \Leftrightarrow y_{i J} = n_{i}-\sum_{j=1}^{J-1} y_{i j}$. A equação acima torna-se:
+
+$$
+\begin{aligned}
+&\prod_{i=1}^{N} \prod_{j=1}^{J-1} \pi_{i j}^{y_{i j}} \cdot \pi_{i J}^{n_{i}-\sum_{j=1}^{J-1} y_{i j}} \\
+=& \prod_{i=1}^{N} \prod_{j=1}^{J-1} \pi_{i j}^{y_{i j}} \cdot \frac{\pi_{i J}^{n_{i}}}{\pi_{i J} \sum_{j=1}^{J-1} y_{i j}} \\
+=& \prod_{i=1}^{N} \prod_{j=1}^{J-1} \pi_{i j}^{y_{i j}} \cdot \frac{\pi_{i J}^{n_{i}}}{\prod_{j=1}^{J-1} \pi_{i J} y_{i j}}\\
+=& \prod_{i=1}^{N} \prod_{j=1}^{J-1}\left(\frac{\pi_{i j}}{\pi_{i J}}\right)^{y_{i j}} \cdot \pi_{i J}^{n_{i}}.
+\end{aligned}
+$$
+Da Equação (), pode ser mostrado que 
+
+$$
+\pi_{i J}=\frac{1}{1+\sum_{j=1}^{J-1} e^{\sum_{k=0}^{K} x_{i k} \beta_{k j}}}.
+$$
+
+Agora, substituindo $\pi_{ij}$ e $\pi_{iJ}$ usando as Equações () e (), temos:
+
+$$
+\begin{aligned}
+L(\boldsymbol{\beta} \mid \boldsymbol{y}) \simeq & \prod_{i=1}^{N} \prod_{j=1}^{J-1}\left(e^{\sum_{k=0}^{K} x_{i k} \beta_{k j}}\right)^{y_{i j}} \cdot\left(\frac{1}{1+\sum_{j=1}^{J-1} e^{K_{k=0}^{K} x_{i k} \beta_{k j}}}\right)^{n_{i}} \\
+=& \prod_{i=1}^{N} \prod_{j=1}^{J-1} e^{y_{i j} \sum_{k=0}^{K} x_{i k} \beta_{k j}} \cdot\left(1+\sum_{j=1}^{J-1} e^{\sum_{k=0}^{K} x_{i k} \beta_{k j}}\right)^{-n_{i}}.
+\end{aligned}
+$$
+
+Com isso, a função de logverossimilhança para o modelo de regressão logística multinomial é:
+
+$$
+l(\boldsymbol{\beta})=\sum_{i=1}^{N} \sum_{j=1}^{J-1}\left(y_{i j} \sum_{k=0}^{K} x_{i k} \beta_{k j}\right)-n_{i} \log \left(1+\sum_{j=1}^{J-1} e^{\sum_{k=0}^{K} x_{i k} \beta_{k j}}\right).
+$$
+
+Para o modelo de regressão logística multinomial regularizada, estimamos os parâmetros do modelo através da função de logverossimilhança penalizada, que é dada por:
+
+$$
+l(\boldsymbol{\beta},\boldsymbol{\lambda},\boldsymbol{\alpha}) = l(\boldsymbol{\beta}) - \boldsymbol{\lambda}P_{\boldsymbol{\alpha}}(\boldsymbol{\beta}),
+$$
+onde
+
+$$
+\begin{aligned}
+P_{\alpha}(\beta) &=(1-\alpha)\|\beta\|_{\ell_{2}}^{2}+\alpha\|\beta\|_{\ell_{1}} \\
+&=\sum_{j=1}^{p}\left[(1-\alpha) \beta_{j}^{2}+\alpha\left|\beta_{j}\right|\right].
+\end{aligned}
+$$
+$P_{\alpha}(\beta)$ é a penalização *elastic-net*. Nesse trabalho consideramos a penalização ridge ($\alpha = 0$) e a penalização lasso ($\alpha = 1$).
+
+Portanto, para cada valor de $\lambda$, encontramos os estimadores de $\beta$ ao maximizar a logverossimilhança penalizada. Vale ressaltar que os valores de $\beta$ são encontrados através de métodos numéricos, pois não há solução analítica para encontrar os estimadores de $\beta$.
+
+Lembrar de comentar sobre as variáveis padronizadas
+
+## 2.1 Selecionando o melhor valor de $\lambda$
+
+Os valores dos estimadores de $\beta$ são obtidos para um acordo com o valor de $\lambda$. Logo, para escolher um $\lambda$ ótimo, podemos usar um erro de predição para nos guiar. Nesse trabalho, separamos os dados em treinamento e teste, sendo 70% dos dados para treino e 30% para teste. Nos dados de treino, aplicamos a regressão ridge e lasso, e escolhemos o valor de $\lambda$ através da validação cruzada. O conjunto de teste é usado para avaliar os modelos de regressão ridge e lasso nos dados de treinamento. Além disso, usamos o erro de classificação como o erro de predição.
+
+# 3. Simulação
+
+# 4. Aplicação em dados reais
+
+```{r}
+x = read.csv("imageMNIST.csv")
+y = read.csv("labelMNIST.csv")
+colnames(x) = paste0("pixel.", 1:400)
+colnames(y) = "label"
+y$label = factor(y$label)
+dados = cbind(y, x)
+```
+
+```{r}
+library(caret)
+library(tidymodels)
+library(glmnet)
+```
+
+```{r}
+set.seed(1)
+
+split_teste <- initial_split(dados, prop = 0.7, strata = label)
+
+#dados teste
+teste <- split_teste |> testing()
+
+# dados treinamento
+treino <- split_teste |> training()
+```
+
+```{r}
+treino$label |> table()
+```
+
+```{r}
+set.seed(1)
+x_treino = model.matrix(label ~ ., treino)
+y_treino = treino %>%
+  select(label) %>%
+  unlist() %>%
+  as.numeric()
+cv.out = cv.glmnet(x_treino, y_treino, alpha = 0, 
+                   family = "multinomial", type.measure = "class") # Fit ridge regression model on training data
+bestlam_ridge = cv.out$lambda.min  # Select lambda that minimizes training misclassification error
+bestlam_ridge
+```
+
+```{r}
+x_teste = model.matrix(label ~ ., teste)
+y_teste = teste %>%
+  select(label) %>%
+  unlist() %>%
+  as.numeric()
+ridge_mod = glmnet(x_treino, y_treino, alpha = 0, family = "multinomial")
+ridge_pred = predict(ridge_mod, s = bestlam_ridge, newx = x_teste) # Use best lambda to predict test data
+class.prediction = apply(ridge_pred[,,1], 1, function(x) which.max(x))
+misc.error = sum(class.prediction == y_teste) / length(y_teste)
+misc.error
+```
+
+```{r}
+set.seed(1)
+cv.out = cv.glmnet(x_treino, y_treino, alpha = 1, 
+                   family = "multinomial", type.measure = "class") # Fit lasso regression model on training data
+bestlam_lasso = cv.out$lambda.min  # Select lambda that minimizes training misclassification error
+bestlam_lasso
+```
+
+```{r}
+lasso_mod = glmnet(x_treino, y_treino, alpha = 1, family = "multinomial")
+lasso_pred = predict(lasso_mod, s = bestlam_lasso, newx = x_teste) # Use best lambda to predict test data
+class.prediction = apply(lasso_pred[,,1], 1, function(x) which.max(x))
+misc.error = sum(class.prediction == y_teste) / length(y_teste)
+misc.error
+```
+
+
+
+
+
+
+
+
+
+
+
