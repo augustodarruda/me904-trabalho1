@@ -1,0 +1,17 @@
+.Rproj.user
+*.Rhistory
+*.RData
+*.Ruserdata
+*.pdf
+*.log
+*.tex
+*.aux
+*.knit.md
+*.out
+*.toc
+*.tof
+*.bbl
+*.blg
+*.html
+*.docx
+*.lof
