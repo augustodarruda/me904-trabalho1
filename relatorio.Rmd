@@ -40,10 +40,6 @@ options(
   )
 ```
 
-```{r}
-library(tidyverse)
-```
-
 
 \begin{titlepage} 
 

@@ -9,6 +9,14 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, eval = FAL
 
 # 1. Introdução
 
+Neste trabalho construimos um classificador usando regressão logística multinomial com penalização Ridge e Lasso. Para melhor demonstrar as propriedades de ambas técnicas, fizemos uma simulação que foi capaz de mostrar a diferença entre elas. No exemplo prático, utilizamos os dados de dígitos do MNIST, e os resultados de acurácia nos dados de teste foram 89.98% para Ridge e 89.35% para Lasso.
+
+## 1.1 Banco de Dados
+
+Os dados de dígitos MNIST (Modified National Institute of Standards and Technology) é considerado o "Hello World" no campo da Visão Computacional e do Machine Learning. 
+Os dados foram criados em 1998, como uma combinação de duas bases de dados e desde então tem sido usado como um benchmark de performance de algoritmos, variando desde Classificação Linear (Taxa de Erro de 7.6%) até Rede Neural de Convolução (Taxa de Erro de 0.17%).
+
+
 # 2. Metodologia
 
 O modelo de regressão logística multinomial pertence à classe dos modelos lineares generalizados. Nesse modelo, a variável resposta $Y$ é categórica com mais de duas categorias. Suponha que a variável resposta tenha $K$ categorias e temos um vetor $x$ de covariáveis. Construímos o modelo de regressão multinomial através dos $K-1$ logitos
@@ -220,7 +228,7 @@ $$
 \end{aligned}
 $$
 
-Não usamos o $\lambda$ obtido pela validação cruzada, pois era praticamente zero e as estimativas do modelo eram próximas ao modelo sem penalização. Consideramos, então, $\lambda = 0.1$. Não consideramos o mesmo valor de $\lambda$ da regressão ridge ($\lambda$ = 10), pois mesmo para valores pequenos de $\lambda$, os coeficientes das preditoras eram zeros. Dito isso, os resultados do modelo com $\lambda = 0.1$ aproximam-se daqueles comentado por (ref): entre as preditoras altamente correlacionadas, o modelo manteve uma e discartou o restante.
+Não usamos o $\lambda$ obtido pela validação cruzada, pois era praticamente zero e as estimativas do modelo eram próximas ao modelo sem penalização. Consideramos, então, $\lambda = 0.1$. Não consideramos o mesmo valor de $\lambda$ da regressão ridge ($\lambda$ = 10), pois mesmo para valores pequenos de $\lambda$, os coeficientes das preditoras eram zeros. Dito isso, os resultados do modelo com $\lambda = 0.1$ aproximam-se daqueles comentado por (ref): entre as preditoras altamente correlacionadas, o modelo manteve uma e descartou o restante.
 
 ## 3.1 Quantidade de preditoras maior que observações
 
