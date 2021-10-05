@@ -1,0 +1,212 @@
+---
+title: "Código usado no trabalho"
+output: html_notebook
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  eval = TRUE,
+  echo = TRUE, 
+  message = FALSE, 
+  warning = FALSE)
+```
+
+```{r}
+# pacotes utilizados
+library(caret)
+library(tidymodels)
+library(glmnet)
+library(corrplot)
+library(yardstick)
+library(ggplot2)
+library(ggpubr)
+```
+
+# Simulação
+
+```{r}
+set.seed(1)
+
+# simula 10 variávei aleatórias e introduz correlação entre algumas delas
+x1 = rnorm(1000)
+x2 = x1 + rnorm(1000, sd = 0.4)
+x3 = -(x1 + rnorm(1000, sd = 1))
+x4 = rnorm(1000)
+x5 = x1 + rnorm(1000, sd = 0.5)
+x6 = rnorm(1000)
+x7 = x3 + rnorm(1000, sd = 0.4)
+x8 = rnorm(1000)
+x9 = x8 + rnorm(1000, sd = 10)
+x10 = x8 + rnorm(1000, sd = 0.5)
+
+# equação de regressão do primeiro logito
+x.B1 = 1 + 2*x1 + 3*x2 - x3 + 4*x4 + 10*x5 - 2*x6 - 4*x7 + 7*x8 - 2*x9 + x10
+
+# equação de regressão do segundo logito
+x.B2 = 3 + x1 - x2 - 5*x3 + 2*x4 + 15*x5 + 3*x6 - 7*x7 + 4*x8 + 6*x9 + 9*x10
+
+# cria as probabilidades para amostrar cada observação da variável resposta
+p1 = exp(x.B1)/(1 + exp(x.B1) + exp(x.B2))
+p2 = exp(x.B2)/(1 + exp(x.B1) + exp(x.B2))
+p3 = 1/(1 + exp(x.B1) + exp(x.B2))
+
+p = data.frame(p1, p2, p3)
+
+# variável resposta
+y = apply(p, 1, function(x) rmultinom(n = 1:3, size = 1, prob = x)) |> 
+  apply(2, function(x) which.max(x))
+
+# verifica a quantidade de observações em cada classe
+table(y)
+
+# cria gráfico com a matriz de correlações
+dados.simulado = data.frame(y, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
+cor.matrix = cor(dados.simulado[-1])
+colnames(cor.matrix) = c("$x[1]", "$x[2]", "$x[3]", "$x[4]", "$x[5]",
+                         "$x[6]", "$x[7]", "$x[8]", "$x[9]", "$x[10]")
+rownames(cor.matrix) = c("$x[1]", "$x[2]", "$x[3]", "$x[4]", "$x[5]",
+                         "$x[6]", "$x[7]", "$x[8]", "$x[9]", "$x[10]")
+corrplot(cor.matrix, tl.pos = 'd', cl.pos = 'n', 
+                   addCoef.col = 'black', method = 'color',
+                   number.cex=0.75)
+```
+
+```{r}
+set.seed(1)
+# padroniza as preditoras
+preProcValues = preProcess(dados.simulado |> select(-y), method = c("scale", "center"))
+dados.simulado_pad = predict(preProcValues, dados.simulado)
+
+# separa a matriz de desenho e o vetor de respostas
+x = model.matrix(y ~ ., dados1_pad)
+y = dados1_pad |> 
+  select(y) |> 
+  unlist() |> 
+  as.numeric()
+
+# validação cruzada para escolher o melhor lambda de acordo com a acurácia
+# o parâmetro alpha = 0 mostra que queremos a regressão ridge
+cv.out = cv.glmnet(x, y, alpha = 0,
+                   family = "multinomial", 
+                   type.measure = "class")
+
+# seleciona o lambda que diminui o erro de predição
+bestlam_ridge = cv.out$lambda.min
+
+# ajusta o modelo ridge
+ridge_mod = glmnet(x, y, alpha = 0, family = "multinomial")
+
+# mostra os coeficientes estimados para cada classe
+# o parâmetro s especifica o valor de lambda
+predict(ridge_mod, type = "coefficients", s = bestlam_ridge)
+
+# mostra os coeficientes estimados para cada classe com lambda = 10
+predict(ridge_mod, type = "coefficients", s = 10)
+```
+
+```{r}
+set.seed(1)
+# faz o mesmo passo anterior, mas dessa vez para a regressão lasso
+# o parâmetro alpha = 0 mostra que queremos a regressão lasso
+cv.out = cv.glmnet(x, y, alpha = 1,
+                   family = "multinomial", 
+                   type.measure = "class")
+lasso_mod = glmnet(x, y, alpha = 1, family = "multinomial")
+
+# lambda selecionado por validação cruzada muito próximo de zero
+cv.out$lambda.min
+
+# mostra os coeficientes estimados para cada classe com lambda = 0.1
+predict(lasso_mod, type = "coefficients", s = 0.1)
+```
+
+# Aplicação em dados reais
+
+```{r}
+# carrega os dados e faz algumas formatações
+x = read.csv("imageMNIST.csv") # preditoras
+y = read.csv("labelMNIST.csv") # variável resposta
+colnames(x) = paste0("pixel.", 1:400)
+colnames(y) = "label"
+y$label[y$label == 10] = 0 # o valor 10 é o dígito 0
+dados = cbind(y, x)
+```
+
+```{r}
+set.seed(1)
+
+split_teste <- initial_split(dados, prop = 0.7, strata = label)
+
+#dados de teste
+teste <- split_teste |> testing()
+
+# dados de treinamento
+treino <- split_teste |> training()
+
+preProcValues = preProcess(treino |> select(-label), method = c("scale", "center"))
+
+# padroniza os preditores do conjunto de treino
+treino_pad = predict(preProcValues, treino)
+
+# padroniza os preditores do conjunto de teste de acordo com
+# a média e variância obtidas no conjunto de teste
+teste_pad = predict(preProcValues, teste)
+```
+
+```{r}
+# separa a matriz de desenho e o vetor de respostas para o treinamento
+x_treino = model.matrix(label ~ ., treino_pad)
+y_treino = treino_pad %>%
+  select(label) %>%
+  unlist() %>%
+  as.numeric()
+
+# separa a matriz de desenho e o vetor de respostas para o teste
+x_teste = model.matrix(label ~ ., teste_pad)
+y_teste = teste_pad %>%
+  select(label) %>%
+  unlist() %>%
+  as.numeric()
+```
+
+
+```{r}
+# ajusta o modelo sem penalização nos dados de treinamento
+nopenalty_mod = glmnet(x_treino, y_treino, alpha = 0, family = "multinomial")
+nopenalty_pred = predict(nopenalty_mod, s = 0, newx = x_teste)
+class.prediction = apply(nopenalty_pred[,,1], 1, function(x) which.max(x))
+accuracy_mod = sum((class.prediction - 1) == y_teste) / length(y_teste)
+accuracy_mod # acurácia nos dados de teste
+```
+
+```{r}
+set.seed(1)
+# validação cruzada para escolher o melhor lambda de acordo com a acurácia
+cv.out = cv.glmnet(x_treino, y_treino, alpha = 0, 
+                   family = "multinomial", type.measure = "class")
+# seleciona o lambda que diminui o erro de predição
+bestlam_ridge = cv.out$lambda.min
+bestlam_ridge
+```
+
+```{r}
+ridge_mod = glmnet(x_treino, y_treino, alpha = 0, family = "multinomial")
+ridge_pred = predict(ridge_mod, s = bestlam_ridge, newx = x_teste)
+# calcula matriz de confusão nos dados de teste
+confusion.glmnet(cv.out, newx = x_teste, newy = y_teste)
+```
+
+```{r}
+set.seed(1)
+# repete o mesmo processo para a regressão lasso
+cv.out = cv.glmnet(x_treino, y_treino, alpha = 1, 
+                   family = "multinomial", type.measure = "class")
+bestlam_lasso = cv.out$lambda.min
+bestlam_lasso
+```
+
+```{r}
+lasso_mod = glmnet(x_treino, y_treino, alpha = 1, family = "multinomial")
+lasso_pred = predict(lasso_mod, s = bestlam_lasso, newx = x_teste)
+confusion.glmnet(cv.out, newx = x_teste, newy = y_teste)
+```
